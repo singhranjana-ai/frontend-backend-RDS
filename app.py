@@ -1,34 +1,122 @@
-
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import mysql.connector
 
 app = Flask(__name__)
-app.secret_key = "change-this-key-before-deployment"
+CORS(app)
 
+# Database Configuration
+db_config = {
+    'host': 'database-1.c0te2kwm8fcz.us-east-1.rds.amazonaws.com',
+    'user': 'admin',
+    'password': 'Cloud123',
+    'database': 'dev'
+}
 
-@app.route("/", methods=["GET", "POST"])
-def register_student():
+# Connect to MySQL
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
 
-    if request.method == "POST":
-        name = request.form.get("name", "").strip()
-        email = request.form.get("email", "").strip()
+# 1️⃣ Get all users
+@app.route('/users', methods=['GET'])
+def get_users():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users")
+    users = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(users)
 
-        if not name or not email:
-            flash("Please enter both name and email.", "error")
-        else:
-            # Database connection will be added in the next step
-            print(f"Student received: {name}, {email}")
-            flash(f"Form received successfully for {name}!", "success")
+# 2️⃣ Get user by ID
+@app.route('/users/<int:user_id>', methods=['GET'])
+def get_user(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if user:
+        return jsonify(user)
+    return jsonify({'error': 'User not found'}), 404
 
-        return redirect(url_for("register_student"))
+# 3️⃣ Add a new user
+@app.route('/users/add', methods=['POST'])
+def add_user():
+    data = request.json
+    name = data.get('name')
+    email = data.get('email')
+    if not name or not email:
+        return jsonify({'error': 'Name and Email are required'}), 400
 
-    # GET request displays the frontend
-    return render_template("index.html")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (name, email) VALUES (%s, %s)",
+            (name, email)
+        )
+        conn.commit()
+        return jsonify({'message': 'User added successfully'}), 201
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
+# 4️⃣ Update user by ID
+@app.route('/users/update/<int:user_id>', methods=['PUT'])
+def update_user(user_id):
+    data = request.json
+    name = data.get('name')
+    email = data.get('email')
+    if not name or not email:
+        return jsonify({'error': 'Name and Email are required'}), 400
 
-@app.route("/students", methods=["GET"])
-def view_students():
-    return "<h2>Student records will be displayed here.</h2>"
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    if not cursor.fetchone():
+        return jsonify({'error': 'User not found'}), 404
 
+    try:
+        cursor.execute(
+            "UPDATE users SET name = %s, email = %s WHERE id = %s",
+            (name, email, user_id)
+        )
+        conn.commit()
+        return jsonify({'message': 'User updated successfully'})
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+# 5️⃣ Delete user by ID
+@app.route('/users/delete/<int:user_id>', methods=['DELETE'])
+def delete_user(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    if not cursor.fetchone():
+        return jsonify({'error': 'User not found'}), 404
+
+    try:
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        conn.commit()
+        return jsonify({'message': 'User deleted successfully'})
+    except mysql.connector.Error as err:
+        return jsonify({'error': str(err)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+# 🔹 Simple Hello route
+@app.route('/')
+def index():
+    return "Hello"
+
+# Entry Point
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
