@@ -1,3 +1,6 @@
 Flask
+flask-cors
 mysql-connector-python
-gunicorn
+redis
+cryptography
+pymysql
