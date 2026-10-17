@@ -1,103 +1,206 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Student Registration | MultiCloud Training</title>
+  <title>User API Frontend</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #eef2f7;
+      margin: 40px;
+      color: #333;
+    }
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          rel="stylesheet">
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
 
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a, #2563eb, #7c3aed);
-        }
+    .header img {
+      height: 50px;
+    }
 
-        .registration-card {
-            width: 100%;
-            max-width: 480px;
-            padding: 35px;
-            border-radius: 20px;
-            background: white;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-        }
+    h2 {
+      color: #2c3e50;
+      margin: 0;
+    }
 
-        .form-control {
-            padding: 12px;
-            border-radius: 10px;
-        }
+    h3 {
+      color: #34495e;
+      margin-top: 40px;
+    }
 
-        .register-btn {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 10px;
-            background: #2563eb;
-            color: white;
-            font-weight: bold;
-        }
+    table {
+      width: 70%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #fff;
+    }
 
-        .register-btn:hover {
-            background: #1d4ed8;
-        }
-    </style>
+    th, td {
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #2980b9;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f4f6f8;
+    }
+
+    tr:hover {
+      background-color: #e1ecf4;
+    }
+
+    input {
+      padding: 10px;
+      margin-right: 10px;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: none;
+      color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .add-btn {
+      background-color: #27ae60;
+    }
+
+    .list-btn {
+      background-color: #2980b9;
+      margin-top: 20px;
+    }
+
+    .delete-btn {
+      background-color: #e74c3c;
+    }
+
+    #formMsg {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 
 <body>
-    <main class="registration-card">
-        <h2 class="text-center fw-bold">Student Registration</h2>
-        <p class="text-center text-secondary">
-            MultiCloud Training Program
-        </p>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% for category, message in messages %}
-                <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }}">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endwith %}
+  <div class="header">
+    <img src="https://a0.awsstatic.com/libra-css/images/logos/aws_logo_smile_1200x630.png">
+    <h2>Welcome to Multicloud DevOps</h2>
+  </div>
 
-        <form action="/" method="POST">
-            <div class="mb-3">
-                <label for="name" class="form-label">Student Name</label>
-                <input type="text"
-                       class="form-control"
-                       id="name"
-                       name="name"
-                       placeholder="Enter your full name"
-                       maxlength="100"
-                       required>
-            </div>
+  <!-- List Users Button -->
+  <button class="list-btn" onclick="loadUsers()">List Users</button>
 
-            <div class="mb-4">
-                <label for="email" class="form-label">Email Address</label>
-                <input type="email"
-                       class="form-control"
-                       id="email"
-                       name="email"
-                       placeholder="Enter your email"
-                       maxlength="150"
-                       required>
-            </div>
+  <!-- User Table -->
+  <table id="userTable">
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Actions</th>
+      <th>City</th>
+    </tr>
+  </table>
 
-            <button type="submit" class="register-btn">
-                Register Student
-            </button>
-        </form>
+  <!-- Add User Form -->
+  <h3>Add New User</h3>
+  <form id="userForm">
+    <input type="text" id="name" placeholder="Enter Name" required>
+    <input type="email" id="email" placeholder="Enter Email" required>
+    <button class="add-btn" type="submit">Add User</button>
+  </form>
 
-        <div class="text-center mt-4">
-            <a href="/students" class="text-decoration-none">
-                View Registered Students
-            </a>
-        </div>
-    </main>
+  <p id="formMsg"></p>
+
+  <script>
+    const backendIP = "";
+
+    // Load Users
+    function loadUsers() {
+      const table = document.getElementById("userTable");
+
+      // Reset table
+      table.innerHTML = `
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Actions</th>
+        </tr>
+      `;
+
+      fetch(`${backendIP}/users`)
+        .then(res => res.json())
+        .then(users => {
+          users.forEach(user => {
+            const row = table.insertRow();
+
+            row.insertCell(0).innerText = user.id;
+            row.insertCell(1).innerText = user.name;
+            row.insertCell(2).innerText = user.email;
+
+            const actionCell = row.insertCell(3);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.innerText = "Delete";
+            deleteBtn.className = "delete-btn";
+
+            deleteBtn.onclick = () => deleteUser(user.id);
+
+            actionCell.appendChild(deleteBtn);
+          });
+        })
+        .catch(err => console.error(err));
+    }
+
+    // Delete User
+    function deleteUser(id) {
+      if (!confirm("Delete this user?")) return;
+
+      fetch(`${backendIP}/users/delete/${id}`, {
+        method: "DELETE"
+      })
+      .then(res => res.json())
+      .then(result => {
+        alert(result.message || result.error);
+        loadUsers();
+      })
+      .catch(err => console.error(err));
+    }
+
+    // Add User
+    document.getElementById("userForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value;
+      const email = document.getElementById("email").value;
+
+      fetch(`${backendIP}/users/add`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email })
+      })
+      .then(res => res.json())
+      .then(result => {
+        document.getElementById("formMsg").textContent =
+          result.message || result.error;
+
+        document.getElementById("userForm").reset();
+        loadUsers();
+      })
+      .catch(err => console.error(err));
+    });
+
+    // Auto load on page start
+    loadUsers();
+  </script>
+
 </body>
 </html>
